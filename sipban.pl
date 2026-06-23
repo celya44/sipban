@@ -315,6 +315,36 @@ my %AMI_Handler = (
             }
         },
         #-----------------------------
+        # Event: FailedACL
+        # EventTV: 2026-06-23T14:08:16.534+0200
+        # Severity: Error
+        # Service: PJSIP
+        # EventVersion: 1
+        # AccountID: anonymous
+        # SessionID: 1969512380@127.0.1.1
+        # LocalAddress: IPV4/UDP/185.222.91.24/5060
+        # RemoteAddress: IPV4/UDP/51.68.33.52/45682
+        # [ACLName: registrar_attempt_without_configured_aors]
+        #-----------------------------
+        "FailedACL" => sub {
+            my $packet_content_ref = shift;
+            my ($service)    = $$packet_content_ref =~ /Service\:\s(.*?)\n/isx;
+            my ($account_id) = $$packet_content_ref =~ /AccountID\:\s(.*?)\n/isx;
+            my ($ipvx, $prot, $remote_ip)  = $$packet_content_ref =~ /RemoteAddress\:\sIPV(4|6)\/(.*?)\/(.*?)\/.*?\n/isx;
+            if( ! defined $remote_ip ){
+                print LOG Time_Stamp() . " REMOTE IP EMPTY. packet_content_ref:\n$$packet_content_ref\n";
+                return;
+            }elsif ( ($service eq 'PJSIP') || ($service eq 'SIP') || ($service eq 'IAX') || ($service eq 'IAX2') || ($service eq 'AMI') ) {
+                $remote_ip = NetAddr::IP->new($remote_ip);
+                $remote_ip = $remote_ip->addr();
+                unless( exists($ban_ip{"$remote_ip"}) ) {
+                    if( Iptables_Block($remote_ip,'Failed ACL') eq 1 ){
+                        $ban_ip{$remote_ip} = time() + $Config{'timer.ban'};
+                    }
+                }
+            }
+        },
+        #-----------------------------
         # Event: InvalidPassword
         # Privilege: security,all
         # EventTV: 2019-06-07T21:17:59.819+0000
