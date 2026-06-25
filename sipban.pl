@@ -371,7 +371,7 @@ my %AMI_Handler = (
                 $remote_ip = NetAddr::IP->new($remote_ip);
                 $remote_ip = $remote_ip->addr();
                 unless( exists($ban_ip{"$remote_ip"}) ) {
-                    if( Iptables_Block($remote_ip,'Failed ACL') eq 1 ){
+                    if( Iptables_Block($remote_ip,'Challenge Response Failed') eq 1 ){
                         $ban_ip{$remote_ip} = time() + $Config{'timer.ban'};
                     }
                 }
