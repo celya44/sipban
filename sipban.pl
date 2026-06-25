@@ -345,6 +345,39 @@ my %AMI_Handler = (
             }
         },
         #-----------------------------
+        # Event: ChallengeResponseFailed
+        # SecurityEvent="ChallengeResponseFailed"
+        # EventTV="2026-06-25T11:18:02.170+0200"
+        # Severity="Error"
+        # Service="PJSIP"
+        # EventVersion="1"
+        # AccountID="<unknown>"
+        # SessionID="bca5ce3bac753e0136e34471bd44c2e6@172.18.10.242"
+        # LocalAddress="IPV4/UDP/185.122.101.167/5060"
+        # RemoteAddress="IPV4/UDP/38.246.32.195/64050"
+        # Challenge="1782379082/60573f75eacde01c393d1172933792fb"
+        # Response="6d6f486145c747e30a74b20bd70abd2b"
+        # ExpectedResponse=""
+        #-----------------------------
+        "ChallengeResponseFailed" => sub {
+            my $packet_content_ref = shift;
+            my ($service)    = $$packet_content_ref =~ /Service\:\s(.*?)\n/isx;
+            my ($account_id) = $$packet_content_ref =~ /AccountID\:\s(.*?)\n/isx;
+            my ($ipvx, $prot, $remote_ip)  = $$packet_content_ref =~ /RemoteAddress\:\sIPV(4|6)\/(.*?)\/(.*?)\/.*?\n/isx;
+            if( ! defined $remote_ip ){
+                print LOG Time_Stamp() . " REMOTE IP EMPTY. packet_content_ref:\n$$packet_content_ref\n";
+                return;
+            }elsif ( ($service eq 'PJSIP') || ($service eq 'SIP') || ($service eq 'IAX') || ($service eq 'IAX2') || ($service eq 'AMI') ) {
+                $remote_ip = NetAddr::IP->new($remote_ip);
+                $remote_ip = $remote_ip->addr();
+                unless( exists($ban_ip{"$remote_ip"}) ) {
+                    if( Iptables_Block($remote_ip,'Failed ACL') eq 1 ){
+                        $ban_ip{$remote_ip} = time() + $Config{'timer.ban'};
+                    }
+                }
+            }
+        },
+        #-----------------------------
         # Event: InvalidPassword
         # Privilege: security,all
         # EventTV: 2019-06-07T21:17:59.819+0000
